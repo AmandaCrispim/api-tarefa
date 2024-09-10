@@ -1,9 +1,6 @@
 package br.edu.univille.br.spa.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -16,13 +13,22 @@ public class Tarefa {
     @Id
     @GeneratedValue
     private long id;
-    @Column(nullable = false)
+
+    @Column(nullable = false, length = 255)
     private String titulo;
-    @Column(nullable = false)
+
+    @Column(length = 1000)
     private Long descricao;
-    private Boolean finalizado;
+
+    private Boolean finalizado = false;
+
+    @Temporal(TemporalType.DATE)
+    @Column(nullable = false)
     private Date dataPrevista;
+
+    @Temporal(TemporalType.DATE)
     private Date dataFinalizacao;
 
 }
+
 
