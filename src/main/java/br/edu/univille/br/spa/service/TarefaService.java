@@ -1,13 +1,12 @@
 package br.edu.univille.br.spa.service;
 
-
 import br.edu.univille.br.spa.entity.Tarefa;
 import br.edu.univille.br.spa.repository.TarefaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TarefaService {
@@ -15,110 +14,70 @@ public class TarefaService {
     @Autowired
     private TarefaRepository tarefaRepository;
 
-    public List<Tarefa> obterTodas() {
+    public Tarefa inserir(Tarefa tarefa) {
+        if (tarefa.getTitulo().length() < 5) {
+            throw new IllegalArgumentException("O título deve conter pelo menos 5 caracteres");
+        }
+        tarefa.setFinalizado(false); // Nova tarefa não está finalizada
+        return tarefaRepository.save(tarefa);
+    }
+
+    public List<Tarefa> consultarTodas() {
         return tarefaRepository.findAll();
     }
 
-    public Optional<Tarefa> obterPeloId(Long id) {
-        return tarefaRepository.findById(id);
+    public Tarefa consultarPorId(Long id) {
+        return tarefaRepository.findById(id).orElse(null);
     }
 
-    public Tarefa incluir(Tarefa tarefa) {
-        tarefa.setId(0L);
-
-        // Validações
-        if (String.isBlank(tarefa.getTitulo())) {
-            throw new RuntimeException("Título não informado.");
-        }
-        if (tarefa.getTitulo().length() < 5) {
-            throw new RuntimeException("O título deve ter pelo menos 5 caracteres.");
-        }
-        if (tarefa.getDataPrevista() == null) {
-            throw new RuntimeException("Data prevista de finalização não informada.");
+    public Tarefa atualizar(Long id, Tarefa tarefaAtualizada) {
+        Tarefa tarefaExistente = tarefaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Tarefa não encontrada"));
+        if (tarefaExistente.getFinalizado()) {
+            throw new IllegalStateException("Não é possível modificar uma tarefa já finalizada");
         }
 
-        tarefa.setFinalizado(false);
-        tarefa.setDataFinalizacao(null);
+        if (tarefaAtualizada.getTitulo().length() < 5) {
+            throw new IllegalArgumentException("O título deve conter pelo menos 5 caracteres");
+        }
 
-        return tarefaRepository.save(tarefa);
+        tarefaExistente.setTitulo(tarefaAtualizada.getTitulo());
+        tarefaExistente.setDescricao(tarefaAtualizada.getDescricao());
+        tarefaExistente.setDataPrevista(tarefaAtualizada.getDataPrevista());
+        return tarefaRepository.save(tarefaExistente);
     }
 
-    public Tarefa atualizar(Tarefa tarefa) {
-        Tarefa antiga = tarefaRepository.findById(tarefa.getId()).orElse(null);
-
-        if (antiga == null) {
-            throw new RuntimeException("Tarefa não encontrada.");
+    public void deletar(Long id) {
+        Tarefa tarefa = tarefaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Tarefa não encontrada"));
+        if (tarefa.getFinalizado()) {
+            throw new IllegalStateException("Não é possível excluir uma tarefa já finalizada");
         }
-
-        // Impede atualização de tarefas finalizadas
-        if (antiga.isFinalizado()) {
-            throw new RuntimeException("Tarefa finalizada não pode ser modificada.");
-        }
-
-        // Validações
-        if (String.isBlank(tarefa.getTitulo())) {
-            throw new RuntimeException("Título não informado.");
-        }
-        if (tarefa.getTitulo().length() < 5) {
-            throw new RuntimeException("O título deve ter pelo menos 5 caracteres.");
-        }
-        if (tarefa.getDataPrevista() == null) {
-            throw new RuntimeException("Data prevista de finalização não informada.");
-        }
-
-        antiga.setTitulo(tarefa.getTitulo());
-        antiga.setDescricao(tarefa.getDescricao());
-        antiga.setDataPrevista(tarefa.getDataPrevista());
-
-        return tarefaRepository.save(antiga);
-    }
-
-    public void excluir(Long id) {
-        Tarefa tarefa = tarefaRepository.findById(id).orElse(null);
-
-        if (tarefa == null) {
-            throw new RuntimeException("Tarefa não encontrada.");
-        }
-
-        if (tarefa.isFinalizado()) {
-            throw new RuntimeException("Tarefa finalizada não pode ser excluída.");
-        }
-
         tarefaRepository.delete(tarefa);
     }
 
-    public List<Tarefa> obterTarefasNaoFinalizadas() {
-        return tarefaRepository.findAllByFinalizadoFalse();
+    public List<Tarefa> consultarTarefasNaoFinalizadas() {
+        return tarefaRepository.findByFinalizadoFalse();
     }
 
-    public List<Tarefa> obterTarefasFinalizadas() {
-        return tarefaRepository.findAllByFinalizadoTrue();
+    public List<Tarefa> consultarTarefasFinalizadas() {
+        return tarefaRepository.findByFinalizadoTrue();
     }
 
-    public List<Tarefa> obterTarefasAtrasadas() {
-        return tarefaRepository.findAllByDataPrevistaFinalizacaoBeforeAndFinalizadoFalse(LocalDate.now());
+    public List<Tarefa> consultarTarefasAtrasadas() {
+        return tarefaRepository.findByFinalizadoFalseAndDataPrevistaBefore(new Date());
     }
 
-    public List<Tarefa> obterTarefasNaoFinalizadasEntreDatas(LocalDate dataInicio, LocalDate dataFim) {
-        return tarefaRepository.findAllByDataPrevistaFinalizacaoBetweenAndFinalizadoFalse(dataInicio, dataFim);
+    public List<Tarefa> consultarTarefasNaoFinalizadasEntreDatas(Date start, Date end) {
+        return tarefaRepository.findByFinalizadoFalseAndDataPrevistaBetween(start, end);
     }
 
     public Tarefa finalizarTarefa(Long id) {
-        Tarefa tarefa = tarefaRepository.findById(id).orElse(null);
-
-        if (tarefa == null) {
-            throw new RuntimeException("Tarefa não encontrada.");
+        Tarefa tarefa = tarefaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Tarefa não encontrada"));
+        if (!tarefa.getFinalizado()) {
+            tarefa.setFinalizado(true);
+            tarefa.setDataFinalizacao(new Date());
+            return tarefaRepository.save(tarefa);
         }
-
-        if (tarefa.isFinalizado()) {
-            throw new RuntimeException("Tarefa já está finalizada.");
-        }
-
-        tarefa.setFinalizado(true);
-        tarefa.setDataFinalizacao(LocalDate.now());
-
-        return tarefaRepository.save(tarefa);
+        return tarefa;
     }
-
-
+}
 

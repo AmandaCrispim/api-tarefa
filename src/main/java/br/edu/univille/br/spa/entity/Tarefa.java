@@ -18,7 +18,7 @@ public class Tarefa {
     private String titulo;
 
     @Column(length = 1000)
-    private Long descricao;
+    private String descricao;
 
     private Boolean finalizado = false;
 
